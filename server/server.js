@@ -30,6 +30,10 @@ app.use(express.json()); // Parse JSON request bodies
 // Mount routers
 app.use('/api/posts', postRoutes);
 
+// Health check endpoint
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('pong');
+});
 // Basic route for testing
 app.get('/', (req, res) => {
   res.send('Bailanysta Server is running!');
