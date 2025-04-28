@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react'; // Import useContext
+import { Link } from 'react-router-dom'; // Import Link
 import {
   Card, CardContent, Typography, CardHeader, Avatar, CardActions, IconButton,
   Box, Collapse, TextField, Button, List, ListItem, ListItemText, Divider
@@ -7,67 +8,114 @@ import { red } from '@mui/material/colors';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
+import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
+import { AuthContext } from '../context/AuthContext'; // Import AuthContext
 
-// Added postId, likes, comments, onLike, onComment, currentUser (placeholder)
-function PostCard({ postId, authorName, authorInitial, postContent, timestamp, likes = [], comments = [], onLike, onComment, currentUser = "tempUser123" }) {
+// Accept post object, onEditClick, onDeleteClick props
+// Keep like/comment props for now, though they might be removed later if not used
+function PostCard({ post, onEditClick, onDeleteClick, onLike, onComment, likes = [], comments = [] }) {
+  const { auth } = useContext(AuthContext); // Get auth object from context
   const [showComments, setShowComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
 
-  const handleCommentToggle = () => {
-    setShowComments(!showComments);
-  };
+  // Determine if the current user is the author
+  // Use optional chaining for safety
+  const isOwner = auth?.user?.id === post?.author?._id;
 
-  const handleLikeClick = () => {
-    if (onLike) {
-      onLike(postId); // Pass postId to the handler
-    }
-  };
-
+  // --- Existing like/comment handlers (can be kept or removed) ---
+  const handleCommentToggle = () => setShowComments(!showComments);
+  const handleLikeClick = () => onLike && onLike(post._id);
   const handleCommentSubmit = () => {
-    if (onComment && newCommentText.trim()) {
-      // Assuming onComment needs postId and the comment details
-      // In a real app, authorName for comment might come from logged-in user context
-      onComment(postId, { authorName: currentUser, text: newCommentText });
-      setNewCommentText(''); // Clear input after submit
-      // Optionally keep comments open or close after submit
-      // setShowComments(false);
+    if (onComment && newCommentText.trim() && auth?.user) {
+      onComment(post._id, { authorName: auth.user.username, text: newCommentText });
+      setNewCommentText('');
+    }
+  };
+  const isLiked = auth?.user && likes.includes(auth.user.id); // Check based on user ID
+  // --- End of like/comment handlers ---
+
+  // Handlers for Edit/Delete buttons
+  const handleEdit = () => {
+    if (onEditClick) {
+      onEditClick(post); // Pass the full post object
     }
   };
 
-  const isLiked = likes.includes(currentUser); // Check if the current user liked the post
+  const handleDelete = () => {
+    if (onDeleteClick) {
+      onDeleteClick(post._id); // Pass only the post ID
+    }
+  };
+
+
+  // Defensive check for post object
+  if (!post || !post.author) {
+    return <Card sx={{ mb: 2 }}><CardContent><Typography>Error loading post.</Typography></CardContent></Card>;
+  }
 
   return (
     <Card sx={{ mb: 2 }} elevation={2}>
       <CardHeader
         avatar={
+          // Use first letter of username for avatar
           <Avatar sx={{ bgcolor: red[500] }} aria-label="author initial">
-            {authorInitial || '?'}
+            {post.author.username ? post.author.username[0].toUpperCase() : '?'}
           </Avatar>
         }
-        title={authorName || 'Unknown User'}
-        subheader={timestamp ? new Date(timestamp).toLocaleString() : 'Just now'}
+        // Display author's username
+        title={
+          <Link
+            to={`/profile/${post.author._id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }} // Basic link styling
+          >
+            {post.author.username || 'Unknown User'}
+          </Link>
+        }
+        // Display post creation date
+        subheader={post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Just now'}
+        // Action buttons (Edit/Delete) appear here if user is owner
+        action={
+          isOwner && (
+            <Box>
+              <IconButton aria-label="edit" onClick={handleEdit}>
+                <EditIcon />
+              </IconButton>
+              <IconButton aria-label="delete" onClick={handleDelete}>
+                <DeleteIcon />
+              </IconButton>
+            </Box>
+          )
+        }
       />
-      <CardContent>
+      <CardContent sx={{ pt: 0 }}> {/* Reduce top padding */}
+         {/* Display Post Title */}
+         <Typography variant="h6" component="div" gutterBottom>
+           {post.title || 'Untitled Post'}
+         </Typography>
+         {/* Display Post Body */}
         <Typography variant="body1" color="text.primary">
-          {postContent || 'No content'}
+          {post.body || 'No content'}
         </Typography>
       </CardContent>
-      <CardActions disableSpacing sx={{ pt: 0 }}> {/* Remove top padding */}
-        <IconButton aria-label="add to favorites" onClick={handleLikeClick}>
+      {/* Keep Like/Comment actions if needed */}
+      <CardActions disableSpacing sx={{ pt: 0, justifyContent: 'flex-start' }}>
+        <IconButton aria-label="add to favorites" onClick={handleLikeClick} disabled={!auth?.user}>
           {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
         </IconButton>
-        <Typography variant="body2" sx={{ mr: 1 }}>{likes.length}</Typography> {/* Display like count */}
+        <Typography variant="body2" sx={{ mr: 1 }}>{likes.length}</Typography>
 
         <IconButton aria-label="show comments" onClick={handleCommentToggle}>
           <ChatBubbleOutlineIcon />
         </IconButton>
-         <Typography variant="body2">{comments.length}</Typography> {/* Display comment count */}
+         <Typography variant="body2">{comments.length}</Typography>
       </CardActions>
+      {/* Keep Comment Collapse section if needed */}
       <Collapse in={showComments} timeout="auto" unmountOnExit>
-        <CardContent sx={{ pt: 0 }}> {/* Remove top padding */}
+        <CardContent sx={{ pt: 0 }}>
            <Divider sx={{ mb: 1 }}/>
            <Typography variant="subtitle2" sx={{ mb: 1 }}>Comments</Typography>
-          <List dense sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}> {/* Limit height and enable scroll */}
+          <List dense sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
             {comments.length > 0 ? comments.map((comment, index) => (
               <ListItem key={index} disableGutters>
                 <ListItemText
@@ -81,20 +129,22 @@ function PostCard({ postId, authorName, authorInitial, postContent, timestamp, l
               </ListItem>
             )}
           </List>
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-            <TextField
-              label="Add a comment..."
-              variant="outlined"
-              size="small"
-              fullWidth
-              value={newCommentText}
-              onChange={(e) => setNewCommentText(e.target.value)}
-              sx={{ mr: 1 }}
-            />
-            <Button variant="contained" size="small" onClick={handleCommentSubmit}>
-              Post
-            </Button>
-          </Box>
+          {auth?.user && ( // Only show comment input if logged in
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <TextField
+                label="Add a comment..."
+                variant="outlined"
+                size="small"
+                fullWidth
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                sx={{ mr: 1 }}
+              />
+              <Button variant="contained" size="small" onClick={handleCommentSubmit}>
+                Post
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Collapse>
     </Card>

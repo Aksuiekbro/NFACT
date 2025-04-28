@@ -1,14 +1,33 @@
 import React, { useState, useMemo, createContext, useContext } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'; // Added Navigate, Outlet
 import FeedPage from './pages/FeedPage';
 import ProfilePage from './pages/ProfilePage';
+import LoginPage from './pages/LoginPage'; // Added LoginPage
+import RegisterPage from './pages/RegisterPage'; // Added RegisterPage
 import Navbar from './components/Navbar'; // Import Navbar
-import { Container, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { Container, CssBaseline, ThemeProvider, createTheme, CircularProgress, Box } from '@mui/material'; // Added CircularProgress, Box
+import { useAuth } from './context/AuthContext'; // Added useAuth
 
 // Create a context for the theme
 export const ThemeContext = createContext({
   toggleTheme: () => {},
 });
+
+// Private Route Component
+const PrivateRoute = () => {
+  const { token, loading } = useAuth();
+
+  if (loading) {
+    // Show a loading indicator while checking auth status
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return token ? <Outlet /> : <Navigate to="/login" replace />;
+};
 
 function App() {
   // State to manage theme mode ('light' or 'dark')
@@ -48,9 +67,17 @@ function App() {
         <Navbar /> {/* Navbar now has access to context via useContext */}
         <Container maxWidth="lg" sx={{ mt: 2 }}> {/* Add margin top */}
           <Routes>
-            <Route path="/" element={<FeedPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            {/* Add other routes later */}
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+
+            {/* Protected routes */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={<FeedPage />} />
+              <Route path="/profile/:identifier" element={<ProfilePage />} />
+              {/* Add other protected routes here */}
+            </Route>
+            {/* Catch-all or 404 route could go here */}
           </Routes>
         </Container>
       </ThemeProvider>

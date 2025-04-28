@@ -17,10 +17,10 @@ const CommentSchema = new mongoose.Schema({
 });
 
 const PostSchema = new mongoose.Schema({
-  authorName: {
-    type: String,
-    required: [true, 'Please add an author name'],
-    trim: true,
+  author: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
   },
   content: {
     type: String,

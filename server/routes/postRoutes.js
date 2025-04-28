@@ -1,19 +1,40 @@
 const express = require('express');
-const { getPosts, createPost, likePost, addComment } = require('../controllers/postController');
+const {
+  getPosts,
+  createPost,
+  updatePost, // Import updatePost
+  deletePost, // Import deletePost
+  likePost,
+  addComment
+} = require('../controllers/postController');
+const { protect } = require('../middleware/authMiddleware'); // Import protect middleware
 
 const router = express.Router();
 
-// Define routes for /api/posts
+// --- Post Routes ---
+
+// GET all posts (Public) /api/posts
+// POST a new post (Protected) /api/posts
 router.route('/')
-  .get(getPosts)    // GET /api/posts - Fetches all posts
-  .post(createPost); // POST /api/posts - Creates a new post
+  .get(protect, getPosts) // Apply protect middleware here
+  .post(protect, createPost);
 
-// Route for liking/unliking a post
+// PUT update a specific post (Protected) /api/posts/:id
+// DELETE a specific post (Protected) /api/posts/:id
+router.route('/:id')
+  .put(protect, updatePost)
+  .delete(protect, deletePost);
+
+// --- Like Routes --- (Keep as is for now, may need protection later)
+
+// PATCH like/unlike a post /api/posts/:id/like
 router.route('/:id/like')
-  .patch(likePost); // PATCH /api/posts/:id/like - Likes/unlikes a post
+  .patch(likePost);
 
-// Route for adding a comment to a post
+// --- Comment Routes --- (Keep as is for now, may need protection later)
+
+// POST add a comment to a post /api/posts/:id/comment
 router.route('/:id/comment')
-  .post(addComment); // POST /api/posts/:id/comment - Adds a comment
+  .post(addComment);
 
 module.exports = router;

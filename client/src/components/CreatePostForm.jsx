@@ -1,63 +1,87 @@
-import React, { useState } from 'react';
-import { Box, TextField, Button, Typography, Paper } from '@mui/material'; // Import Paper
-import axios from 'axios'; // Import axios
+import React, { useState, useContext } from 'react';
+import { Box, TextField, Button, Typography, Paper, Alert } from '@mui/material'; // Import Paper and Alert
+import { createPost } from '../api/postApi'; // Import the API helper
+import { AuthContext } from '../context/AuthContext'; // Import AuthContext
 
-function CreatePostForm() {
-  const [postContent, setPostContent] = useState('');
-  // Optional: Add state for loading/error feedback
-  // const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [submitError, setSubmitError] = useState(null);
+// Accept onPostCreated prop
+function CreatePostForm({ onPostCreated }) {
+  const [title, setTitle] = useState(''); // Add title state
+  const [body, setBody] = useState(''); // Rename postContent to body
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false); // State for success message
+
+  const { token } = useContext(AuthContext); // Get token from context
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    // setIsSubmitting(true); // Optional: Set loading state
-    // setSubmitError(null); // Optional: Clear previous errors
+    if (!token) {
+      setSubmitError('You must be logged in to create a post.');
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false); // Reset success message
 
     try {
-      console.log('Submitting post:', postContent);
-      const response = await axios.post('/api/posts', {
-        authorName: 'CurrentUser', // Hardcoded as per instructions
-        content: postContent,
-      });
-      console.log('Post created successfully:', response.data);
-      setPostContent(''); // Clear form after successful submit
+      const postData = { title, body };
+      console.log('Submitting post:', postData);
+      // Use the createPost helper with token
+      const response = await createPost(postData, token);
+      console.log('Post created successfully:', response);
+      setTitle(''); // Clear title
+      setBody(''); // Clear body
+      setSubmitSuccess(true); // Show success message
+      if (onPostCreated) {
+        onPostCreated(); // Call the refresh function passed from parent
+      }
     } catch (err) {
       console.error('Error creating post:', err);
-      // setSubmitError('Failed to create post. Please try again.'); // Optional: Set error message
+      setSubmitError(err.message || 'Failed to create post. Please try again.');
     } finally {
-      // setIsSubmitting(false); // Optional: Reset loading state
+      setIsSubmitting(false);
     }
   };
 
   return (
-    // Wrap form in Paper with padding and elevation
     <Paper elevation={3} sx={{ p: 3, mt: 2, mb: 2 }}>
-      <Box component="form" onSubmit={handleSubmit}> {/* Remove sx from Box */}
-        <Typography variant="h6" gutterBottom> {/* Add gutterBottom */}
+      <Box component="form" onSubmit={handleSubmit}>
+        <Typography variant="h6" gutterBottom>
           Create New Post
         </Typography>
+        {/* Add Title Field */}
         <TextField
-          label="What's on your mind?"
+          label="Title"
+          fullWidth
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          margin="normal"
+          required
+          disabled={isSubmitting}
+        />
+        <TextField
+          label="What's on your mind?" // Keep label descriptive
           multiline
-        rows={4}
-        fullWidth
-        value={postContent}
-        onChange={(e) => setPostContent(e.target.value)}
-        margin="normal"
-        required
-        // disabled={isSubmitting} // Optional: Disable while submitting
-      />
-      {/* Optional: Display submission error */}
-      {/* {submitError && <Typography color="error">{submitError}</Typography>} */}
-      <Button
-        type="submit"
-        variant="contained"
-        sx={{ mt: 1 }}
-        // disabled={isSubmitting || !postContent.trim()} // Optional: Disable button
-      >
-        {/* {isSubmitting ? 'Posting...' : 'Post'} */}
-        Post
-      </Button>
+          rows={4}
+          fullWidth
+          value={body} // Use body state
+          onChange={(e) => setBody(e.target.value)} // Update body state
+          margin="normal"
+          required
+          disabled={isSubmitting}
+        />
+        {/* Display submission error */}
+        {submitError && <Alert severity="error" sx={{ mt: 1 }}>{submitError}</Alert>}
+        {/* Display success message */}
+        {submitSuccess && <Alert severity="success" sx={{ mt: 1 }}>Post created successfully!</Alert>}
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ mt: 2 }} // Add more margin top
+          disabled={isSubmitting || !title.trim() || !body.trim()} // Disable if no title/body or submitting
+        >
+          {isSubmitting ? 'Posting...' : 'Post'}
+        </Button>
       </Box>
     </Paper>
   );

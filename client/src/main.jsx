@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter
 import axios from 'axios'; // Import axios
+import { AuthProvider } from './context/AuthContext'; // Import AuthProvider
 
 // Configure Axios base URL using environment variable
 // In development, this will be '/' (to use the proxy)
@@ -14,7 +15,9 @@ console.log('Axios baseURL set to:', axios.defaults.baseURL); // Optional: Log f
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter> {/* Wrap App with BrowserRouter */}
-      <App />
+      <AuthProvider> {/* Wrap App with AuthProvider */}
+        <App />
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );
