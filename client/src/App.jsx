@@ -1,0 +1,61 @@
+import React, { useState, useMemo, createContext, useContext } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import FeedPage from './pages/FeedPage';
+import ProfilePage from './pages/ProfilePage';
+import Navbar from './components/Navbar'; // Import Navbar
+import { Container, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+
+// Create a context for the theme
+export const ThemeContext = createContext({
+  toggleTheme: () => {},
+});
+
+function App() {
+  // State to manage theme mode ('light' or 'dark')
+  // Initialize state from localStorage or default to 'light'
+  const [mode, setMode] = useState(() => {
+    const storedMode = localStorage.getItem('themeMode');
+    return (storedMode === 'light' || storedMode === 'dark') ? storedMode : 'light';
+  });
+
+  // Function to toggle theme and update localStorage
+  const toggleTheme = () => {
+    setMode((prevMode) => {
+      const newMode = prevMode === 'light' ? 'dark' : 'light';
+      localStorage.setItem('themeMode', newMode); // Persist choice
+      return newMode;
+    });
+  };
+
+  // Create the theme based on the current mode
+  // useMemo ensures the theme is only recreated when the mode changes
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: mode,
+        },
+      }),
+    [mode],
+  );
+
+  return (
+    // Provide the theme context value (the toggle function)
+    <ThemeContext.Provider value={{ toggleTheme }}>
+      {/* Apply the MUI theme */}
+      <ThemeProvider theme={theme}>
+        <CssBaseline /> {/* Ensures background matches theme */}
+        <Navbar /> {/* Navbar now has access to context via useContext */}
+        <Container maxWidth="lg" sx={{ mt: 2 }}> {/* Add margin top */}
+          <Routes>
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            {/* Add other routes later */}
+          </Routes>
+        </Container>
+      </ThemeProvider>
+    </ThemeContext.Provider>
+  );
+}
+
+export default App;
