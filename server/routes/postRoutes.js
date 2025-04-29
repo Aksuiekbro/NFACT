@@ -5,7 +5,8 @@ const {
   updatePost, // Import updatePost
   deletePost, // Import deletePost
   likePost,
-  addComment
+  addComment,
+  getUserPosts // Added getUserPosts
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware'); // Import protect middleware
 
@@ -25,16 +26,19 @@ router.route('/:id')
   .put(protect, updatePost)
   .delete(protect, deletePost);
 
+// GET posts by a specific user /api/posts/user/:userId
+router.get('/user/:userId', getUserPosts); // Added route for user-specific posts
+
 // --- Like Routes --- (Keep as is for now, may need protection later)
 
-// PATCH like/unlike a post /api/posts/:id/like
+// PATCH like/unlike a post /api/posts/:id/like (Protected)
 router.route('/:id/like')
-  .patch(likePost);
+  .patch(protect, likePost); // Apply protect middleware
 
 // --- Comment Routes --- (Keep as is for now, may need protection later)
 
-// POST add a comment to a post /api/posts/:id/comment
+// POST add a comment to a post /api/posts/:id/comment (Protected)
 router.route('/:id/comment')
-  .post(addComment);
+  .post(protect, addComment); // Apply protect middleware
 
 module.exports = router;

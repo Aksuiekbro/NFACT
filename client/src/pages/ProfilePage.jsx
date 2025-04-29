@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, followUser, unfollowUser } from '../api/userApi';
-import { Box, Typography, Button, CircularProgress, Alert, Card, CardContent, CardHeader, Avatar } from '@mui/material';
-// Removed CreatePostForm import as it's not specified for viewing other profiles
+import { getUserPosts } from '../api/postApi'; // Import getUserPosts
+import { Box, Typography, Button, CircularProgress, Alert, Card, CardContent, CardHeader, Avatar, Grid } from '@mui/material'; // Added Grid
+import PostCard from '../components/PostCard'; // Import PostCard
 
 function ProfilePage() {
     const { identifier } = useParams(); // Get username or ID from URL
@@ -15,6 +16,9 @@ function ProfilePage() {
     const [error, setError] = useState('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [userPosts, setUserPosts] = useState([]); // State for user's posts
+    const [postsLoading, setPostsLoading] = useState(false); // Loading state for posts
+    const [postsError, setPostsError] = useState(''); // Error state for posts
 
     const fetchProfileData = useCallback(async () => {
         if (!identifier || !token) return; // Don't fetch if identifier or token is missing
@@ -25,9 +29,12 @@ function ProfilePage() {
             const data = await getUserProfile(identifier);
             setProfile(data);
             // Check if the logged-in user is already following this profile
-            // Assumes loggedInUser and data._id are available
-            if (loggedInUser && data.followers) {
-                setIsFollowing(data.followers.includes(loggedInUser.id));
+            // Check if loggedInUser's ID is in the fetched profile's followers list
+            if (loggedInUser?._id && data?.followers) {
+                 // Ensure IDs are compared as strings for reliable .includes() check
+                setIsFollowing(data.followers.map(id => id.toString()).includes(loggedInUser._id.toString()));
+            } else {
+                 setIsFollowing(false); // Default if data is missing
             }
         } catch (err) {
             console.error("Error fetching profile:", err);
@@ -50,14 +57,37 @@ function ProfilePage() {
         // Add authLoading and navigate to dependency array
     }, [identifier, token, authLoading, fetchProfileData, navigate]);
 
+    // Effect to fetch user's posts once profile data is available
+    useEffect(() => {
+        const fetchUserPosts = async () => {
+            if (!profile?._id || !token) return; // Need profile ID and token
+
+            setPostsLoading(true);
+            setPostsError('');
+            try {
+                const postsData = await getUserPosts(profile._id, token);
+                setUserPosts(postsData);
+            } catch (err) {
+                console.error("Error fetching user posts:", err);
+                setPostsError(err.message || 'Failed to load posts.');
+            } finally {
+                setPostsLoading(false);
+            }
+        };
+
+        fetchUserPosts();
+    }, [profile?._id, token]); // Re-fetch if profile ID or token changes
+
     const handleFollow = async () => {
         if (!profile || !token) return;
         setFollowLoading(true);
         setError('');
         try {
-            const updatedProfile = await followUser(profile._id, token);
+            await followUser(profile._id, token); // Call API
+            // Optimistically update button state immediately
             setIsFollowing(true);
-            setProfile(updatedProfile); // Update profile state with new follower data
+            // Refetch profile data to update counts etc.
+            await fetchProfileData();
         } catch (err) {
             console.error("Error following user:", err);
             setError(err.message || 'Failed to follow user.');
@@ -71,9 +101,11 @@ function ProfilePage() {
         setFollowLoading(true);
         setError('');
         try {
-            const updatedProfile = await unfollowUser(profile._id, token);
+            await unfollowUser(profile._id, token); // Call API
+            // Optimistically update button state immediately
             setIsFollowing(false);
-            setProfile(updatedProfile); // Update profile state with new follower data
+             // Refetch profile data to update counts etc.
+            await fetchProfileData();
         } catch (err) {
             console.error("Error unfollowing user:", err);
             setError(err.message || 'Failed to unfollow user.');
@@ -139,12 +171,32 @@ function ProfilePage() {
                      {/* Display specific follow/unfollow errors here */}
                     {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
 
-                    {/* Placeholder for user's posts - maybe add later */}
-                    {/* <Typography variant="h6" sx={{ mt: 3 }}>Posts</Typography> */}
-                    {/* Map through user's posts here */}
-
                 </CardContent>
             </Card>
+
+            {/* Display User's Posts */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+                Posts by {profile.username}
+            </Typography>
+            {postsLoading && (
+                 <Box display="flex" justifyContent="center" sx={{ my: 2 }}><CircularProgress /></Box>
+            )}
+            {postsError && <Alert severity="error" sx={{ mb: 2 }}>{postsError}</Alert>}
+            {!postsLoading && !postsError && userPosts.length === 0 && (
+                <Typography>This user hasn't posted anything yet.</Typography>
+            )}
+            {!postsLoading && !postsError && userPosts.length > 0 && (
+                 <Grid container spacing={2}>
+                    {userPosts.map((post) => (
+                        <Grid item xs={12} sm={6} md={4} key={post._id}>
+                             {/* Assuming PostCard takes post data as prop */}
+                             {/* You might need to adjust PostCard props based on its definition */}
+                            <PostCard post={post} />
+                        </Grid>
+                    ))}
+                </Grid>
+            )}
+
              {/* Maybe add CreatePostForm back if it's the user's own profile */}
              {/* {isOwnProfile && <CreatePostForm />} */}
         </Box>

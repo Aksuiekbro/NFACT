@@ -107,7 +107,36 @@ const login = async (req, res) => {
   }
 };
 
+// @desc    Verify token and get user data
+// @route   GET /api/auth/verify
+// @access  Private
+const verifyToken = async (req, res) => {
+  try {
+    // req.user.id should be attached by the protect middleware
+    if (!req.user || !req.user.id) {
+      // This case should technically be handled by 'protect' middleware sending 401
+      // but adding a check here for robustness.
+      return res.status(401).json({ message: 'Not authorized, user ID missing after token verification' });
+    }
+
+    // Fetch user details from DB, excluding the password
+    const user = await User.findById(req.user.id).select('-password');
+
+    if (!user) {
+      // This could happen if the user was deleted after the token was issued
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Send back user data
+    res.json(user);
+
+  } catch (error) {
+    console.error('Token Verification/User Fetch Error:', error);
+    res.status(500).json({ message: 'Server error during token verification' });
+  }
+};
 module.exports = {
   register,
   login,
+  verifyToken, // Added verifyToken export here
 };

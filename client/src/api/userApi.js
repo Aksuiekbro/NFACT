@@ -5,7 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'; // 
 // Get user profile by identifier (username or ID)
 export const getUserProfile = async (identifier) => {
     try {
-        const response = await axios.get(`${API_URL}/users/profile/${identifier}`);
+        // Corrected URL: Removed the extra '/profile' segment
+        const response = await axios.get(`${API_URL}/users/${identifier}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching user profile:', error.response?.data?.message || error.message);
@@ -16,7 +17,8 @@ export const getUserProfile = async (identifier) => {
 // Follow a user
 export const followUser = async (userIdToFollow, token) => {
     try {
-        const response = await axios.post(`${API_URL}/users/follow/${userIdToFollow}`, {}, {
+        // Corrected URL structure: /users/:id/follow
+        const response = await axios.post(`${API_URL}/users/${userIdToFollow}/follow`, {}, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -31,7 +33,8 @@ export const followUser = async (userIdToFollow, token) => {
 // Unfollow a user
 export const unfollowUser = async (userIdToUnfollow, token) => {
     try {
-        const response = await axios.post(`${API_URL}/users/unfollow/${userIdToUnfollow}`, {}, {
+        // Corrected URL structure and HTTP method (DELETE)
+        const response = await axios.delete(`${API_URL}/users/${userIdToUnfollow}/follow`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

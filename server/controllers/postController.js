@@ -2,34 +2,20 @@ const Post = require('../models/Post');
 const User = require('../models/User'); // Import User model
 const Notification = require('../models/Notification'); // Import Notification model
 
-// @desc    Get personalized post feed for the logged-in user
+// @desc    Get global post feed
 // @route   GET /api/posts
-// @access  Private (Requires Authentication)
+// @access  Private (Still requires login to view feed)
 const getPosts = async (req, res) => {
   try {
-    // 1. Get the logged-in user's ID from the request (set by authMiddleware)
-    const userId = req.user.id;
-
-    // 2. Find the logged-in user to get their 'following' list
-    const user = await User.findById(userId).select('following'); // Select only the 'following' field
-
-    if (!user) {
-      // This shouldn't happen if authMiddleware is working correctly, but good to check
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // 3. Create the list of authors to fetch posts from: the user themselves + people they follow
-    const authorsToFetch = [...user.following, userId]; // Include user's own posts
-
-    // 4. Find posts where the author is in the 'authorsToFetch' list
-    const posts = await Post.find({ author: { $in: authorsToFetch } })
+    // Fetch all posts, regardless of author
+    const posts = await Post.find({}) // Changed query to find all posts
       .populate('author', 'username') // Populate author's username
-      .sort({ createdAt: -1 }); // Sort by creation date, newest first
+      .sort({ timestamp: -1 }); // Sort by timestamp field defined in schema, newest first
 
     res.status(200).json(posts);
 
   } catch (error) {
-    console.error('Error fetching personalized feed:', error);
+    console.error('Error fetching global feed:', error); // Updated error message context
     res.status(500).json({ message: 'Server Error fetching feed' });
   }
 };
@@ -134,15 +120,21 @@ const addComment = async (req, res) => {
   }
 
   try {
-    // Populate author ID to check for notification
-    const post = await Post.findById(postId).populate('author', '_id');
+    // Fetch the commenting user's details to get their username
+    const commentingUser = await User.findById(userId).select('username');
+    if (!commentingUser) {
+        return res.status(404).json({ message: 'Commenting user not found.' });
+    }
+
+    // Find the post (no need to populate author here, just need the post object)
+    const post = await Post.findById(postId);
 
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
     const newComment = {
-      author: userId, // Store the user ID as the author
+      authorName: commentingUser.username, // Use correct field name and username
       text,
       // timestamp is added by default by Mongoose schema
     };
@@ -171,8 +163,8 @@ const addComment = async (req, res) => {
 
     // Populate comment author username for the response
     const populatedPost = await Post.findById(updatedPost._id)
-        .populate('author', 'username')
-        .populate('comments.author', 'username'); // Populate author within comments
+        .populate('author', 'username');
+        // No need to populate comments.author anymore as we store authorName directly
 
     res.status(201).json(populatedPost);
 
@@ -265,8 +257,36 @@ const deletePost = async (req, res) => {
   }
 };
 
+// @desc    Get all posts for a specific user
+// @route   GET /api/posts/user/:userId
+// @access  Public (or Private, depending on requirements)
+const getUserPosts = async (req, res) => {
+  try {
+    const { userId } = req.params; // Get userId from route parameters
+
+    // Validate if userId is a valid ObjectId format if needed, though find should handle it
+    // if (!mongoose.Types.ObjectId.isValid(userId)) {
+    //   return res.status(400).json({ message: 'Invalid User ID format' });
+    // }
+
+    const posts = await Post.find({ author: userId }) // Find posts by this specific author
+      .populate('author', 'username') // Populate author's username
+      .sort({ timestamp: -1 }); // Sort by timestamp, newest first
+
+    // Check if user exists or if posts array is empty - return empty array if no posts found
+    res.status(200).json(posts);
+
+  } catch (error) {
+    console.error(`Error fetching posts for user ${req.params.userId}:`, error);
+     if (error.name === 'CastError') { // Handle potential CastError if ID format is wrong despite check
+        return res.status(400).json({ message: 'Invalid User ID format provided' });
+    }
+    res.status(500).json({ message: 'Server Error fetching user posts' });
+  }
+};
 
 module.exports = {
+getUserPosts, // Added getUserPosts
   getPosts,
   createPost,
   updatePost, // Add updatePost

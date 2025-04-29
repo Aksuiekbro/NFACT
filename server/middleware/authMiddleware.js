@@ -16,7 +16,8 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Attach user id to the request object
-      req.user = { id: decoded.id }; // Or find user: await User.findById(decoded.id).select('-password');
+      // Attach user id to the request object - Correctly access nested ID
+      req.user = { id: decoded.user.id };
 
       next();
     } catch (error) {

@@ -10,29 +10,31 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import DeleteIcon from '@mui/icons-material/Delete'; // Import DeleteIcon
-import { AuthContext } from '../context/AuthContext'; // Import AuthContext
+import { useAuth } from '../context/AuthContext'; // Import useAuth hook instead
 
 // Accept post object, onEditClick, onDeleteClick props
 // Keep like/comment props for now, though they might be removed later if not used
 function PostCard({ post, onEditClick, onDeleteClick, onLike, onComment, likes = [], comments = [] }) {
-  const { auth } = useContext(AuthContext); // Get auth object from context
+  const { user, token } = useAuth(); // Use the hook and get user/token
   const [showComments, setShowComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
 
   // Determine if the current user is the author
-  // Use optional chaining for safety
-  const isOwner = auth?.user?.id === post?.author?._id;
+  // Use optional chaining for safety - compare user._id now
+  const isOwner = user?._id === post?.author?._id;
 
   // --- Existing like/comment handlers (can be kept or removed) ---
   const handleCommentToggle = () => setShowComments(!showComments);
   const handleLikeClick = () => onLike && onLike(post._id);
   const handleCommentSubmit = () => {
-    if (onComment && newCommentText.trim() && auth?.user) {
-      onComment(post._id, { authorName: auth.user.username, text: newCommentText });
+    // Use user.username for authorName
+    if (onComment && newCommentText.trim() && user) {
+      onComment(post._id, { authorName: user.username, text: newCommentText });
       setNewCommentText('');
     }
   };
-  const isLiked = auth?.user && likes.includes(auth.user.id); // Check based on user ID
+  // Check based on user._id
+  const isLiked = user && likes.map(id => id.toString()).includes(user._id.toString());
   // --- End of like/comment handlers ---
 
   // Handlers for Edit/Delete buttons
@@ -100,7 +102,8 @@ function PostCard({ post, onEditClick, onDeleteClick, onLike, onComment, likes =
       </CardContent>
       {/* Keep Like/Comment actions if needed */}
       <CardActions disableSpacing sx={{ pt: 0, justifyContent: 'flex-start' }}>
-        <IconButton aria-label="add to favorites" onClick={handleLikeClick} disabled={!auth?.user}>
+        {/* Disable button if user is not logged in */}
+        <IconButton aria-label="add to favorites" onClick={handleLikeClick} disabled={!user}>
           {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
         </IconButton>
         <Typography variant="body2" sx={{ mr: 1 }}>{likes.length}</Typography>
@@ -129,7 +132,7 @@ function PostCard({ post, onEditClick, onDeleteClick, onLike, onComment, likes =
               </ListItem>
             )}
           </List>
-          {auth?.user && ( // Only show comment input if logged in
+          {user && ( // Only show comment input if logged in
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
               <TextField
                 label="Add a comment..."

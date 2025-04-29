@@ -21,12 +21,12 @@ const getUserProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Return public profile data including follower/following counts
+        // Return public profile data including the actual follower/following arrays
         res.json({
             _id: user._id,
             username: user.username,
-            followersCount: user.followers.length,
-            followingCount: user.following.length,
+            followers: user.followers, // Return the array
+            following: user.following, // Return the array
             createdAt: user.createdAt,
             // Add any other public fields you want to expose
         });
@@ -57,15 +57,25 @@ const followUser = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Add target user to current user's following list
-        // Add current user to target user's followers list
-        // Using $addToSet to prevent duplicates
-        await currentUser.updateOne({ $addToSet: { following: targetUserId } });
-        await targetUser.updateOne({ $addToSet: { followers: currentUserId } });
+        // Use atomic operations for updates
+        const updateCurrentUser = await User.updateOne(
+            { _id: currentUserId, following: { $ne: targetUserId } }, // Condition: only update if not already following
+            { $addToSet: { following: targetUserId } }
+        );
 
-        // No need to save separately as updateOne saves changes
+        const updateTargetUser = await User.updateOne(
+            { _id: targetUserId, followers: { $ne: currentUserId } }, // Condition: only update if not already followed
+            { $addToSet: { followers: currentUserId } }
+        );
 
-        res.json({ message: `Successfully followed ${targetUser.username}` });
+        // Check if updates actually modified documents (nModified > 0)
+        // This indicates if the follow relationship was newly established
+        // if (updateCurrentUser.modifiedCount > 0 || updateTargetUser.modifiedCount > 0) {
+             // Optionally: Trigger notification logic here if needed
+        // }
+
+        // Return simple success status. Frontend should refetch profile data.
+        res.status(200).json({ success: true, message: `Follow status updated for ${targetUser.username}` });
 
     } catch (error) {
         console.error('Error following user:', error);
@@ -91,14 +101,30 @@ const unfollowUser = async (req, res) => {
             // If only target user is not found, proceed to remove from current user's list if present
         }
 
-        // Remove target user from current user's following list
-        // Remove current user from target user's followers list (if target exists)
-        await currentUser.updateOne({ $pull: { following: targetUserId } });
+        // Use atomic operations for updates
+        const updateCurrentUser = await User.updateOne(
+            { _id: currentUserId },
+            { $pull: { following: targetUserId } }
+        );
+
+        let updateTargetUser = null;
         if (targetUser) {
-            await targetUser.updateOne({ $pull: { followers: currentUserId } });
+            updateTargetUser = await User.updateOne(
+                { _id: targetUserId },
+                { $pull: { followers: currentUserId } }
+            );
         }
 
-        res.json({ message: `Successfully unfollowed user` }); // Keep message generic in case target user was deleted
+        // Log whether updates occurred (Optional)
+        // if (updateCurrentUser.modifiedCount > 0) {
+        //      console.log(`[unfollowUser] User ${currentUserId} unfollowed ${targetUserId}`);
+        // }
+        // if (updateTargetUser && updateTargetUser.modifiedCount > 0) {
+        //      console.log(`[unfollowUser] User ${currentUserId} removed from ${targetUserId}'s followers`);
+        // }
+
+        // Return simple success status. Frontend should refetch profile data.
+        res.status(200).json({ success: true, message: `Unfollow status updated for user ${targetUserId}` });
 
     } catch (error) {
         console.error('Error unfollowing user:', error);

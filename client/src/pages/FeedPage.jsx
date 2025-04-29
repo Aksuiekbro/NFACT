@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 import { getPosts, updatePost, deletePost } from '../api/postApi'; // Import API helpers
+import { likePost, addComment } from '../api/postApi'; // Import like/comment API helpers
 import PostCard from '../components/PostCard';
 import CreatePostForm from '../components/CreatePostForm'; // Import CreatePostForm
 import EditPostModal from '../components/EditPostModal'; // Import EditPostModal
@@ -158,6 +159,61 @@ function FeedPage() {
   const handleRefreshPosts = () => {
     fetchPosts(); // Simply refetch all posts
   };
+// --- Like/Comment Handlers ---
+  const handleLike = async (postId) => {
+    if (!token) {
+      showSnackbar('You must be logged in to like posts.', 'error');
+      return;
+    }
+    try {
+      // Optimistic UI Update
+      setPosts(prevPosts =>
+        prevPosts.map(p => {
+          if (p._id === postId) {
+            const isAlreadyLiked = p.likes.includes(user._id);
+            const newLikes = isAlreadyLiked
+              ? p.likes.filter(id => id !== user._id) // Unlike
+              : [...p.likes, user._id]; // Like
+            return { ...p, likes: newLikes };
+          }
+          return p;
+        })
+      );
+      // Call API
+      await likePost(postId, token);
+      // No need to refetch all posts, optimistic update is usually sufficient for likes
+    } catch (err) {
+      console.error("Error liking post:", err);
+      showSnackbar(err.message || 'Failed to update like status.', 'error');
+      // Revert optimistic update on error (optional but recommended)
+      fetchPosts(token); // Refetch to be sure state is correct
+    }
+  };
+
+  const handleComment = async (postId, commentData) => {
+     if (!token) {
+      showSnackbar('You must be logged in to comment.', 'error');
+      return;
+    }
+     if (!commentData || !commentData.text || !commentData.text.trim()) {
+         showSnackbar('Comment text cannot be empty.', 'warning');
+         return;
+     }
+    try {
+      // Call API - backend should return the updated post with the new comment
+      const updatedPost = await addComment(postId, commentData, token);
+
+      // Update local state with the post returned from the API
+      setPosts(prevPosts =>
+        prevPosts.map(p => (p._id === postId ? updatedPost : p))
+      );
+      // Optionally show success snackbar
+      // showSnackbar('Comment added!', 'success');
+    } catch (err) {
+      console.error("Error adding comment:", err);
+      showSnackbar(err.message || 'Failed to add comment.', 'error');
+    }
+  };
 
   // --- Render Logic ---
   // Show loading indicator while auth is loading OR page is loading initially
@@ -213,11 +269,11 @@ function FeedPage() {
              // Pass handlers for edit/delete
              onEditClick={handleOpenEditModal}
              onDeleteClick={handleDeletePost}
-             // Keep like/comment handlers if implemented, otherwise remove
-             // onLike={handleLike}
-             // onComment={handleComment}
-             // likes={post.likes} // Pass likes if needed
-             // comments={post.comments} // Pass comments if needed
+             // Pass like/comment handlers and data
+             onLike={handleLike}
+             onComment={handleComment}
+             likes={post.likes} // Pass likes array
+             comments={post.comments} // Pass comments array
            />
          ))
       )}

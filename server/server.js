@@ -25,15 +25,21 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5001; // Use environment variable or default
-
 // Middleware
-// Configure CORS to allow requests from the Vercel frontend
-app.use(cors({
-  origin: 'https://nfact-lac.vercel.app', // Allow only your frontend origin
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Allow common methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow necessary headers
-}));
+// Define CORS options
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+// Handle preflight requests for all routes
+
 app.use(express.json()); // Parse JSON request bodies
+
 
 // Mount routers
 app.use('/api/posts', postRoutes);

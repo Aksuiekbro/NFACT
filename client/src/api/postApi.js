@@ -74,3 +74,42 @@ export const deletePost = async (postId, token) => {
     const responseData = await response.json().catch(() => ({})); // Avoid error if body is empty
     throw new Error(responseData.message || 'An unexpected error occurred during deletion');
 };
+// Fetch posts for a specific user
+export const getUserPosts = async (userId, token) => {
+    // Construct headers - might need auth depending on backend route protection
+    const headers = token ? getAuthHeaders(token) : { 'Content-Type': 'application/json' };
+    const response = await fetch(`${API_URL}/posts/user/${userId}`, {
+        headers: headers,
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to fetch posts for user ${userId}`);
+    }
+    return response.json();
+};
+// Like/Unlike a post
+export const likePost = async (postId, token) => {
+    const response = await fetch(`${API_URL}/posts/${postId}/like`, {
+        method: 'PATCH', // Use PATCH as defined in backend routes
+        headers: getAuthHeaders(token),
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update like status');
+    }
+    return response.json(); // Backend returns the updated post
+};
+// Add a comment to a post
+export const addComment = async (postId, commentData, token) => {
+    // commentData should be an object like { text: "..." }
+    const response = await fetch(`${API_URL}/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: getAuthHeaders(token),
+        body: JSON.stringify(commentData),
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add comment');
+    }
+    return response.json(); // Backend returns the updated post with comments
+};

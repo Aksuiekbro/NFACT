@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 // Create Context
-const AuthContext = createContext();
+export const AuthContext = createContext(); // Export the context itself
 
 // API Base URL (Consider moving to a config file or env variable)
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -21,13 +21,13 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         try {
-          // Optional: Fetch user data if you have an endpoint like /api/auth/me
-          // const response = await axios.get(`${API_URL}/auth/me`);
-          // setUser(response.data.user);
-          // For now, just set loading to false if token exists
-          setLoading(false);
+          // Verify token and fetch user data using the new endpoint
+          const response = await axios.get(`${API_URL}/auth/verify`);
+          setUser(response.data); // Set user with the data returned from verify endpoint
+          setLoading(false); // Set loading false only after successful verification
         } catch (error) {
-          console.error('Failed to fetch user data on load:', error);
+          // Log the error for debugging, e.g., token expired, network error
+          console.error('Token verification failed:', error.response?.data?.message || error.message);
           // Token might be invalid, clear it
           localStorage.removeItem('token');
           setToken(null);

@@ -11,7 +11,7 @@ import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } 
 function Navbar() {
   const theme = useTheme();
   const { toggleTheme } = useContext(ThemeContext);
-  const { token, logout } = useAuth();
+  const { token, logout, user } = useAuth(); // Add user
   const navigate = useNavigate(); // For potential navigation on notification click
 
   const [notifications, setNotifications] = useState([]);
@@ -115,7 +115,8 @@ function Navbar() {
               <Button color="inherit" component={Link} to="/" sx={{ textDecoration: 'none', mr: 1 }}>
                 Feed
               </Button>
-              <Button color="inherit" component={Link} to="/profile" sx={{ textDecoration: 'none', mr: 1 }}>
+              {/* Use user._id for the profile link */}
+              <Button color="inherit" component={Link} to={user ? `/profile/${user._id}` : '/login'} sx={{ textDecoration: 'none', mr: 1 }}>
                 Profile
               </Button>
               <Button color="inherit" onClick={logout} sx={{ mr: 1 }}> {/* Logout Button */}
