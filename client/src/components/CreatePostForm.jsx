@@ -24,9 +24,9 @@ function CreatePostForm({ onPostCreated }) {
     setSubmitSuccess(false); // Reset success message
 
     try {
-      // Send 'content' field as expected by the backend
-      const postData = { content: body };
-      console.log('Submitting post:', postData); // Will now log {content: "..."}
+      // Send both 'title' and 'content' fields
+      const postData = { title: title, content: body }; // Include title and use 'content' for body
+      console.log('Submitting post:', postData); // Will now log {title: "...", content: "..."}
       // Use the createPost helper with token
       const response = await createPost(postData, token);
       console.log('Post created successfully:', response);

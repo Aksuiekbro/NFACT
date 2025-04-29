@@ -22,6 +22,11 @@ const PostSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  title: { // Add title field
+    type: String,
+    required: [true, 'Please add a post title'],
+    trim: true,
+  },
   content: {
     type: String,
     required: [true, 'Please add post content'],

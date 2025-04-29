@@ -97,7 +97,7 @@ function PostCard({ post, onEditClick, onDeleteClick, onLike, onComment, likes =
          </Typography>
          {/* Display Post Body */}
         <Typography variant="body1" color="text.primary">
-          {post.body || 'No content'}
+          {post.content || 'No content'} {/* Use post.content instead of post.body */}
         </Typography>
       </CardContent>
       {/* Keep Like/Comment actions if needed */}

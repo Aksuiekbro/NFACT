@@ -25,15 +25,17 @@ const getPosts = async (req, res) => {
 // @access  Private (Requires Authentication)
 const createPost = async (req, res) => {
   // Author ID comes from the authenticated user (set by authMiddleware)
-  const { content } = req.body;
+  const { title, content } = req.body; // Extract title and content
   const authorId = req.user.id; // Get user ID from middleware
 
-  if (!content) {
-     return res.status(400).json({ message: 'Content is required' });
+  // Validate both title and content
+  if (!title || !content) {
+     return res.status(400).json({ message: 'Both title and content are required' });
   }
 
   try {
     const newPost = await Post.create({
+      title, // Add title
       content,
       author: authorId, // Assign the author ID
     });
